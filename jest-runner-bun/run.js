@@ -7,7 +7,7 @@ const babel = require('@babel/core');
 
 const execSync = require('child_process').execSync;
 
-module.exports = async ({ testPath, config }) => {
+module.exports = async ({ testPath, config, globalConfig}) => {
   const start = new Date();
   const cfg = {}
   const runnerConfig = Object.assign(
@@ -23,13 +23,19 @@ module.exports = async ({ testPath, config }) => {
   let result = null;
 
   try {
-    const stdout = execSync(`bun ${require.resolve('./bunRunner.js')} ${testPath}`, {stdio : 'pipe' });
+    const bufferConfig = new Buffer(JSON.stringify(config));
+    const bufferGlobalConfig = new Buffer(JSON.stringify(globalConfig));
+    const configString = bufferConfig.toString('base64');
+    const globalConfigString = bufferGlobalConfig.toString('base64');
+    const command = `/Users/rickhanlonii/.nvm/versions/node/v18.14.0/bin/bun ${require.resolve('./bunRunner.js')} ${testPath} ${configString} ${globalConfigString}`;
+
+    const stdout = execSync(command, {stdio : 'pipe' });
     // console.log(`stdout: ${stdout}`);
     // console.error(`stderr: ${stderr}`);
 
-    result = JSON.parse(stdout);
+    result = JSON.parse(stdout.toString().split('#### RESULTS ####')[1].trim());
   } catch (err) {
-    console.error('err', err.stderr);
+    console.error('err', err);
     return fail({
       start,
       end: new Date(),
@@ -37,8 +43,6 @@ module.exports = async ({ testPath, config }) => {
     });
   }
 
-  // Classics in the genre! Yes, it's possible, sometimes.
-  // Old habit for ensurance
   if (!result) {
     return fail({
       start,

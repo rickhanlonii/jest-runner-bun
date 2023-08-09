@@ -1,27 +1,28 @@
-// console.log(process.argv);
+const JestCircus = require('jest-circus-bun/runner');
 
-const originalConsoleLog = console.log;
-console.log = () => {
-}
-
-const JestCircus = require('jest-circus/runner');
 const JestNodeEnvironment = require ('jest-environment-node');
 
-
-console.log(require.toString());
+// globalConfig,
+//   config,
+//   environment,
+//   runtime,
+//   testPath,
+//   sendMessageToJest
 
 async function run() {
   try {
-    const result = await JestCircus({
-      maxConcurrency: 1,
-    }, {
+    const testPath = process.argv[2];
+    const config = JSON.parse(new Buffer(process.argv[3], 'base64').toString('ascii'));
+    const globalConfig = JSON.parse(new Buffer(process.argv[4], 'base64').toString('ascii'));
+
+    Object.assign(config, {
       snapshotSerializers: [],
       fakeTimers: {},
       setupFilesAfterEnv: [],
       injectGlobals: false,
+    });
 
-
-    }, JestNodeEnvironment, {
+    const result = await JestCircus(globalConfig, config, JestNodeEnvironment, {
       requireInternalModule: (module) => {
         console.log('requireInternalModule', module);
         try {
@@ -40,11 +41,12 @@ async function run() {
       setGlobalsForRuntime: (runtimeGlobals) => {
         Object.assign(global, runtimeGlobals);
       },
-    }, process.argv[2], () => {
+    }, testPath, () => {
       console.log('XX message to jest');
     });
 
-    originalConsoleLog(JSON.stringify(result));
+    console.log('#### RESULTS ####');
+    console.log(JSON.stringify(result));
 
   } catch (e) {
     console.log('error', e);
